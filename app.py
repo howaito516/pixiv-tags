@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # --- DB 接続 ---
 def get_db():
-    conn = sqlite3.connect("tags.db")
+    conn = sqlite3.connect("tags.db", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -45,7 +45,6 @@ def normalize_date(raw):
         d = parts[2].zfill(2)
         return f"{y}-{m}-{d}"
 
-    # それでも無理なら今日
     return date.today().isoformat()
 
 # --- トップページ ---
@@ -167,6 +166,14 @@ def import_csv():
     db.commit()
 
     return redirect("/")
+
+# --- キャッシュ無効化（戻るボタンでも最新表示） ---
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # --- Flask 起動 ---
 if __name__ == "__main__":
