@@ -7,7 +7,6 @@
 <body>
     <h1>Pixiv タグ管理</h1>
 
-    <!-- タグ追加フォーム -->
     <h2>タグ追加</h2>
     <form action="/add" method="post">
         <label>タグ名</label><br>
@@ -29,7 +28,7 @@
 
     <br>
 
-    <!-- CSVダウンロード（インポートの次の行） -->
+    <!-- CSVダウンロード -->
     <a href="/download">CSVダウンロード</a>
 
     <br><br>
@@ -44,22 +43,26 @@
     <ul>
         {% for tag in tags %}
         <li>
-            <strong>{{ tag.name }}</strong>
-            （最終検索: {{ tag.last_search }}）
 
-            <!-- 検索ボタン（同じ行） -->
+            <!-- 検索ボタン（タグ名の左） -->
             <form action="/search/{{ tag.id }}" method="get" style="display:inline;">
                 <button type="submit">検索</button>
             </form>
 
             &nbsp;&nbsp;
 
-            <!-- 編集リンク -->
+            <strong>{{ tag.name }}</strong>
+
+            &nbsp;&nbsp;
+
+            （最終検索: {{ tag.last_search }}）
+
+            &nbsp;&nbsp;
+
             <a href="/edit/{{ tag.id }}">編集</a>
 
             &nbsp;&nbsp;
 
-            <!-- 削除リンク（POST送信） -->
             <form action="/delete/{{ tag.id }}" method="post" style="display:inline;">
                 <a href="#" onclick="if(confirm('削除しますか？')) this.closest('form').submit(); return false;">削除</a>
             </form>
@@ -67,6 +70,7 @@
             {% if tag.memo %}
                 <br>メモ: {{ tag.memo }}
             {% endif %}
+
         </li>
         {% endfor %}
     </ul>

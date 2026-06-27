@@ -24,7 +24,7 @@ with get_db() as db:
         )
     """)
 
-# --- トップページ（タグ一覧 + ソート + 追加フォーム） ---
+# --- トップページ ---
 @app.route("/")
 def index():
     sort = request.args.get("sort", "desc")
@@ -37,7 +37,7 @@ def index():
 
     return render_template("index.html", tags=tags, sort=sort)
 
-# --- タグ追加（トップページからPOST） ---
+# --- タグ追加 ---
 @app.route("/add", methods=["POST"])
 def add():
     name = request.form["name"]
@@ -75,19 +75,22 @@ def delete(tag_id):
     db.commit()
     return redirect("/")
 
-# --- 検索して last_search を更新（scd/ecd対応） ---
+# --- 検索（Pixiv検索URLの正しい形式） ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
     today = date.today().isoformat()
-    start = tag["last_search"] or today  # None対策
+    start = tag["last_search"] or today
+    start = start.replace("/", "-")
 
-    # pixivの日付範囲検索URL（YYYY-MM-DD形式）
-    url = f"https://www.pixiv.net/tags/{tag['name']}/artworks?scd={start}&ecd={today}"
+    # 正しいPixiv検索URL
+    url = (
+        f"https://www.pixiv.net/search?"
+        f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
+    )
 
-    # 検索日を更新
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
 
@@ -125,13 +128,13 @@ def import_csv():
     stream = io.StringIO(file.stream.read().decode("utf-8-sig"))
     reader = csv.reader(stream)
 
-    next(reader, None)  # ヘッダーをスキップ
+    next(reader, None)
 
     db = get_db()
     for row in reader:
         if len(row) >= 2:
             name = row[0]
-            last_search = row[1]
+            last_search = row[1].replace("/", "-")
             memo = row[2] if len(row) >= 3 else ""
             db.execute(
                 "INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)",
@@ -141,7 +144,7 @@ def import_csv():
 
     return redirect("/")
 
-# --- Flask 起動（Render 用） ---
+# --- Flask 起動 ---
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
