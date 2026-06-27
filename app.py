@@ -75,15 +75,20 @@ def delete(tag_id):
     db.commit()
     return redirect("/")
 
-# --- 検索して last_search を更新 ---
+# --- 検索して last_search を更新（scd/ecd対応） ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
+    today = date.today().isoformat()
+    start = tag["last_search"] or today  # None対策
+
+    # pixivの日付範囲検索URL
     url = f"https://www.pixiv.net/tags/{tag['name']}/artworks?scd={start}&ecd={today}"
 
-    db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (date.today().isoformat(), tag_id))
+    # 検索日を更新
+    db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
 
     return redirect(url)

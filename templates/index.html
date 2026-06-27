@@ -21,14 +21,16 @@
 
     <hr>
 
-    <!-- CSVダウンロード -->
-    <a href="/download">CSVダウンロード</a>
-
     <!-- CSVインポート -->
     <form action="/import" method="post" enctype="multipart/form-data" style="display:inline;">
         <input type="file" name="file" required>
         <button type="submit">CSVインポート</button>
     </form>
+
+    <br>
+
+    <!-- CSVダウンロード（インポートの次の行） -->
+    <a href="/download">CSVダウンロード</a>
 
     <br><br>
 
@@ -49,13 +51,26 @@
                 <br>メモ: {{ tag.memo }}
             {% endif %}
 
-            <br>
-            <a href="/search/{{ tag.id }}">検索</a>
-            <a href="/edit/{{ tag.id }}">編集</a>
+            <div style="margin-top: 4px;">
 
-            <form action="/delete/{{ tag.id }}" method="post" style="display:inline;">
-                <button type="submit" onclick="return confirm('削除しますか？');">削除</button>
-            </form>
+                <!-- 検索ボタン -->
+                <form action="/search/{{ tag.id }}" method="get" style="display:inline;">
+                    <button type="submit">検索</button>
+                </form>
+
+                &nbsp;&nbsp;
+
+                <!-- 編集リンク -->
+                <a href="/edit/{{ tag.id }}">編集</a>
+
+                &nbsp;&nbsp;
+
+                <!-- 削除リンク（POST送信） -->
+                <form action="/delete/{{ tag.id }}" method="post" style="display:inline;">
+                    <a href="#" onclick="if(confirm('削除しますか？')) this.closest('form').submit(); return false;">削除</a>
+                </form>
+
+            </div>
         </li>
         {% endfor %}
     </ul>
