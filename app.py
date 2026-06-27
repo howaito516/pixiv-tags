@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, send_file
 import sqlite3
-from datetime import date
+from datetime import date, datetime
 import os
 import csv
 import io
@@ -23,6 +23,30 @@ with get_db() as db:
             memo TEXT
         )
     """)
+
+# --- 日付を YYYY-MM-DD に正規化（ゼロ埋め対応） ---
+def normalize_date(raw):
+    if not raw:
+        return date.today().isoformat()
+
+    raw = raw.replace("/", "-")
+
+    # まず YYYY-MM-DD としてパースを試す
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except ValueError:
+        pass
+
+    # ダメなら手動でゼロ埋め
+    parts = raw.split("-")
+    if len(parts) == 3:
+        y = parts[0]
+        m = parts[1].zfill(2)
+        d = parts[2].zfill(2)
+        return f"{y}-{m}-{d}"
+
+    # それでも無理なら今日
+    return date.today().isoformat()
 
 # --- トップページ ---
 @app.route("/")
@@ -75,15 +99,14 @@ def delete(tag_id):
     db.commit()
     return redirect("/")
 
-# --- 検索（Pixiv検索URLの正しい形式） ---
+# --- 検索（Pixiv検索URL + 日付ゼロ埋め） ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
     today = date.today().isoformat()
-    start = tag["last_search"] or today
-    start = start.replace("/", "-")
+    start = normalize_date(tag["last_search"])
 
     # 正しいPixiv検索URL
     url = (
@@ -91,6 +114,7 @@ def search(tag_id):
         f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
     )
 
+    # 検索日を更新
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
 
@@ -118,7 +142,7 @@ def download():
         download_name="pixiv_tags.csv"
     )
 
-# --- CSV インポート ---
+# --- CSV インポート（ゼロ埋め対応） ---
 @app.route("/import", methods=["POST"])
 def import_csv():
     file = request.files["file"]
@@ -134,7 +158,7 @@ def import_csv():
     for row in reader:
         if len(row) >= 2:
             name = row[0]
-            last_search = row[1].replace("/", "-")
+            last_search = normalize_date(row[1])
             memo = row[2] if len(row) >= 3 else ""
             db.execute(
                 "INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)",
