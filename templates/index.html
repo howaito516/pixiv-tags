@@ -20,20 +20,15 @@
 
     <hr>
 
-    <!-- CSVインポート -->
     <form action="/import" method="post" enctype="multipart/form-data" style="display:inline;">
         <input type="file" name="file" required>
         <button type="submit">CSVインポート</button>
     </form>
 
     <br>
-
-    <!-- CSVダウンロード -->
     <a href="/download">CSVダウンロード</a>
-
     <br><br>
 
-    <!-- ソート切り替え -->
     {% if sort == "asc" %}
         <a href="/?sort=desc">日付の新しい順に並べる</a>
     {% else %}
@@ -43,34 +38,22 @@
     <ul>
         {% for tag in tags %}
         <li>
-
-            <!-- 検索ボタン（タグ名の左） -->
             <form action="/search/{{ tag.id }}" method="get" style="display:inline;">
                 <button type="submit">検索</button>
             </form>
-
             &nbsp;&nbsp;
-
             <strong>{{ tag.name }}</strong>
-
             &nbsp;&nbsp;
-
             （最終検索: {{ tag.last_search }}）
-
             &nbsp;&nbsp;
-
             <a href="/edit/{{ tag.id }}">編集</a>
-
             &nbsp;&nbsp;
-
             <form action="/delete/{{ tag.id }}" method="post" style="display:inline;">
                 <a href="#" onclick="if(confirm('削除しますか？')) this.closest('form').submit(); return false;">削除</a>
             </form>
-
             {% if tag.memo %}
                 <br>メモ: {{ tag.memo }}
             {% endif %}
-
         </li>
         {% endfor %}
     </ul>

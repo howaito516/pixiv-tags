@@ -31,33 +31,26 @@ def normalize_date(raw):
 
     raw = raw.replace("/", "-")
 
-    # まず YYYY-MM-DD としてパースを試す
     try:
         return datetime.strptime(raw, "%Y-%m-%d").strftime("%Y-%m-%d")
     except ValueError:
-        pass
-
-    # ダメなら手動でゼロ埋め
-    parts = raw.split("-")
-    if len(parts) == 3:
-        y = parts[0]
-        m = parts[1].zfill(2)
-        d = parts[2].zfill(2)
-        return f"{y}-{m}-{d}"
-
+        parts = raw.split("-")
+        if len(parts) == 3:
+            y = parts[0]
+            m = parts[1].zfill(2)
+            d = parts[2].zfill(2)
+            return f"{y}-{m}-{d}"
     return date.today().isoformat()
 
 # --- トップページ ---
 @app.route("/")
 def index():
     sort = request.args.get("sort", "desc")
-
     db = get_db()
     if sort == "asc":
         tags = db.execute("SELECT * FROM tags ORDER BY last_search ASC").fetchall()
     else:
         tags = db.execute("SELECT * FROM tags ORDER BY last_search DESC").fetchall()
-
     return render_template("index.html", tags=tags, sort=sort)
 
 # --- タグ追加 ---
@@ -66,12 +59,8 @@ def add():
     name = request.form["name"]
     memo = request.form["memo"]
     today = date.today().isoformat()
-
     db = get_db()
-    db.execute(
-        "INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)",
-        (name, today, memo)
-    )
+    db.execute("INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)", (name, today, memo))
     db.commit()
     return redirect("/")
 
@@ -79,14 +68,12 @@ def add():
 @app.route("/edit/<int:tag_id>", methods=["GET", "POST"])
 def edit(tag_id):
     db = get_db()
-
     if request.method == "POST":
         name = request.form["name"]
         memo = request.form["memo"]
         db.execute("UPDATE tags SET name = ?, memo = ? WHERE id = ?", (name, memo, tag_id))
         db.commit()
         return redirect("/")
-
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
     return render_template("edit.html", tag=tag)
 
@@ -98,7 +85,7 @@ def delete(tag_id):
     db.commit()
     return redirect("/")
 
-# --- 検索（Pixiv検索URL + 日付ゼロ埋め） ---
+# --- 検索（Pixiv検索URL + 日付ゼロ埋め + 更新確認ログ） ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
@@ -113,9 +100,12 @@ def search(tag_id):
         f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
     )
 
-    # 検索日を更新
-    db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
-    db.commit()
+    try:
+        db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
+        db.commit()
+        print(f"[INFO] Updated last_search for tag_id={tag_id} to {today}")
+    except Exception as e:
+        print(f"[ERROR] Failed to update last_search: {e}")
 
     return redirect(url)
 
@@ -124,16 +114,12 @@ def search(tag_id):
 def download():
     db = get_db()
     tags = db.execute("SELECT name, last_search, memo FROM tags").fetchall()
-
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["タグ名", "最終検索日", "メモ"])
-
     for tag in tags:
         writer.writerow([tag["name"], tag["last_search"], tag["memo"]])
-
     output.seek(0)
-
     return send_file(
         io.BytesIO(output.getvalue().encode("utf-8-sig")),
         mimetype="text/csv",
@@ -147,24 +133,17 @@ def import_csv():
     file = request.files["file"]
     if not file:
         return redirect("/")
-
     stream = io.StringIO(file.stream.read().decode("utf-8-sig"))
     reader = csv.reader(stream)
-
     next(reader, None)
-
     db = get_db()
     for row in reader:
         if len(row) >= 2:
             name = row[0]
             last_search = normalize_date(row[1])
             memo = row[2] if len(row) >= 3 else ""
-            db.execute(
-                "INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)",
-                (name, last_search, memo)
-            )
+            db.execute("INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)", (name, last_search, memo))
     db.commit()
-
     return redirect("/")
 
 # --- キャッシュ無効化（戻るボタンでも最新表示） ---
