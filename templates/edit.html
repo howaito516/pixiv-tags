@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>タグ編集</title>
+</head>
+<body>
+    <h1>タグ編集</h1>
+
+    <form method="post">
+        <label>タグ名</label><br>
+        <input name="name" value="{{ tag.name }}" required><br><br>
+
+        <label>メモ</label><br>
+        <textarea name="memo" rows="4" cols="40">{{ tag.memo }}</textarea><br><br>
+
+        <button type="submit">更新</button>
+    </form>
+
+    <a href="/">戻る</a>
+</body>
+</html>
