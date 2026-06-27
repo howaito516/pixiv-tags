@@ -130,20 +130,17 @@ def search(tag_id):
     start = normalize_date(tag["last_search"])
     today = today_jst()
 
-    # URL生成（あなたの①）
     url = (
         f"https://www.pixiv.net/search?"
         f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
     )
 
-    # DB更新（あなたの②）
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
 
     print(f"[INFO] JST TODAY = {today}")
     print(f"[INFO] URL = {url}")
 
-    # リダイレクト（あなたの③）
     return redirect(url)
 
 # --- CSV ダウンロード ---
