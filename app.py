@@ -93,28 +93,34 @@ def delete(tag_id):
     db.commit()
     return redirect("/")
 
-# --- 検索（前回検索日 → 今日までのイラスト） ---
+# --- 検索（前回検索日 → 今日まで） ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
+
+    # ① DBからタグ情報を取得
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
-    today = date.today().isoformat()
+    # ② 前回検索日（開始日）
     start = normalize_date(tag["last_search"])
 
-    # Pixiv検索URL（前回検索日 → 今日）
+    # ③ 今日（終了日）
+    today = date.today().isoformat()
+
+    # ④ 最終検索日時～本日までのURLを作成（あなたの①）
     url = (
         f"https://www.pixiv.net/search?"
         f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
     )
 
-    # 検索日を更新
+    # ⑤ DB上の最終検索日時を本日に更新（あなたの②）
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
 
-    print(f"[INFO] Searching {tag['name']} from {start} to {today}")
+    print(f"[INFO] URL created: {url}")
     print(f"[INFO] Updated last_search for tag_id={tag_id} to {today}")
 
+    # ⑥ URLに飛ぶ（あなたの③）
     return redirect(url)
 
 # --- CSV ダウンロード ---
