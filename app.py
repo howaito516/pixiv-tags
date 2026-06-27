@@ -1,11 +1,17 @@
 from flask import Flask, render_template, request, redirect, send_file
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 import os
 import csv
 import io
 
 app = Flask(__name__)
+
+# --- JST設定 ---
+JST = timezone(timedelta(hours=9))
+
+def today_jst():
+    return datetime.now(JST).date().isoformat()
 
 # --- DB 接続 ---
 def get_db():
@@ -24,10 +30,10 @@ with get_db() as db:
         )
     """)
 
-# --- 日付を YYYY-MM-DD に正規化（ゼロ埋め対応） ---
+# --- 日付を YYYY-MM-DD に正規化 ---
 def normalize_date(raw):
     if not raw:
-        return date.today().isoformat()
+        return today_jst()
 
     raw = raw.replace("/", "-")
 
@@ -40,7 +46,7 @@ def normalize_date(raw):
             m = parts[1].zfill(2)
             d = parts[2].zfill(2)
             return f"{y}-{m}-{d}"
-    return date.today().isoformat()
+    return today_jst()
 
 # --- トップページ ---
 @app.route("/")
@@ -60,7 +66,7 @@ def index():
 def add():
     name = request.form["name"]
     memo = request.form["memo"]
-    today = date.today().isoformat()
+    today = today_jst()
 
     db = get_db()
     db.execute(
@@ -93,34 +99,34 @@ def delete(tag_id):
     db.commit()
     return redirect("/")
 
-# --- 検索（前回検索日 → 今日まで） ---
+# --- 検索（前回検索日 → 今日(JST)まで） ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
 
-    # ① DBからタグ情報を取得
+    # DBから取得
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
-    # ② 前回検索日（開始日）
+    # 前回検索日
     start = normalize_date(tag["last_search"])
 
-    # ③ 今日（終了日）
-    today = date.today().isoformat()
+    # 今日（JST）
+    today = today_jst()
 
-    # ④ 最終検索日時～本日までのURLを作成（あなたの①）
+    # URL生成（あなたの①）
     url = (
         f"https://www.pixiv.net/search?"
         f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
     )
 
-    # ⑤ DB上の最終検索日時を本日に更新（あなたの②）
+    # DB更新（あなたの②）
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
 
-    print(f"[INFO] URL created: {url}")
-    print(f"[INFO] Updated last_search for tag_id={tag_id} to {today}")
+    print(f"[INFO] JST TODAY = {today}")
+    print(f"[INFO] URL = {url}")
 
-    # ⑥ URLに飛ぶ（あなたの③）
+    # リダイレクト（あなたの③）
     return redirect(url)
 
 # --- CSV ダウンロード ---
@@ -171,7 +177,7 @@ def import_csv():
 
     return redirect("/")
 
-# --- キャッシュ無効化（戻るボタンでも最新表示） ---
+# --- キャッシュ無効化 ---
 @app.after_request
 def add_header(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
