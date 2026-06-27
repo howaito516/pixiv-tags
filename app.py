@@ -30,22 +30,43 @@ with get_db() as db:
         )
     """)
 
-# --- 日付を YYYY-MM-DD に正規化 ---
+# --- CSV日付強化版 normalize_date ---
 def normalize_date(raw):
     if not raw:
         return today_jst()
 
-    raw = raw.replace("/", "-")
+    raw = raw.strip().replace("/", "-")
 
+    # ① 完全一致 YYYY-MM-DD
     try:
         return datetime.strptime(raw, "%Y-%m-%d").strftime("%Y-%m-%d")
     except ValueError:
-        parts = raw.split("-")
-        if len(parts) == 3:
-            y = parts[0]
-            m = parts[1].zfill(2)
-            d = parts[2].zfill(2)
-            return f"{y}-{m}-{d}"
+        pass
+
+    parts = raw.split("-")
+
+    # ② YYYY-M-D / YYYY-MM-D / YYYY-M-DD
+    if len(parts) == 3 and len(parts[0]) == 4:
+        y = parts[0]
+        m = parts[1].zfill(2)
+        d = parts[2].zfill(2)
+        return f"{y}-{m}-{d}"
+
+    # ③ YY-M-D（西暦2桁 → 2000年代として扱う）
+    if len(parts) == 3 and len(parts[0]) == 2:
+        y = "20" + parts[0]
+        m = parts[1].zfill(2)
+        d = parts[2].zfill(2)
+        return f"{y}-{m}-{d}"
+
+    # ④ M-D（年なし → 今年を補完）
+    if len(parts) == 2:
+        year = today_jst().split("-")[0]
+        m = parts[0].zfill(2)
+        d = parts[1].zfill(2)
+        return f"{year}-{m}-{d}"
+
+    # ⑤ それ以外は今日
     return today_jst()
 
 # --- トップページ ---
@@ -104,13 +125,9 @@ def delete(tag_id):
 def search(tag_id):
     db = get_db()
 
-    # DBから取得
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
-    # 前回検索日
     start = normalize_date(tag["last_search"])
-
-    # 今日（JST）
     today = today_jst()
 
     # URL生成（あなたの①）
