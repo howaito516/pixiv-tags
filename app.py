@@ -81,7 +81,7 @@ def search(tag_id):
     db = get_db()
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
-    url = f"https://www.pixiv.net/tags/{tag['name']}/artworks"
+    url = f"https://www.pixiv.net/tags/{tag['name']}/artworks?scd={start}&ecd={today}"
 
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (date.today().isoformat(), tag_id))
     db.commit()
