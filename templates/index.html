@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Pixiv タグ管理</title>
+</head>
+<body>
+    <h1>Pixiv タグ管理</h1>
+
+    <a href="/add">タグを追加</a>
+
+    <ul>
+        {% for tag in tags %}
+        <li>
+            {{ tag.name }}（最終検索: {{ tag.last_search }}）
+            <a href="/search/{{ tag.id }}">検索</a>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
