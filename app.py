@@ -84,7 +84,7 @@ def search(tag_id):
     today = date.today().isoformat()
     start = tag["last_search"] or today  # None対策
 
-    # pixivの日付範囲検索URL
+    # pixivの日付範囲検索URL（YYYY-MM-DD形式）
     url = f"https://www.pixiv.net/tags/{tag['name']}/artworks?scd={start}&ecd={today}"
 
     # 検索日を更新
