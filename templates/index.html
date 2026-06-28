@@ -10,6 +10,8 @@
         th { background: #eee; }
         input, textarea { width: 100%; padding: 6px; }
         button { padding: 6px 12px; }
+        a.search-link { display: inline-block; padding: 6px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+        a.search-link:hover { background: #0056b3; }
     </style>
 </head>
 <body>
@@ -44,10 +46,8 @@
             <textarea id="memo_{{ tag[0] }}">{{ tag[3] }}</textarea>
         </td>
         <td>
-            <!-- 🔥 PC / Android 両対応の検索ボタン -->
-            <a href="/search/{{ tag[0] }}" target="_blank">
-                <button type="button">検索</button>
-            </a>
+            <!-- 🔥 buttonを削除し、aタグ単体で検索リンク -->
+            <a href="/search/{{ tag[0] }}" class="search-link" target="_blank">検索</a>
 
             <button onclick="updateTag({{ tag[0] }})">更新</button>
             <button onclick="deleteTag({{ tag[0] }})">削除</button>

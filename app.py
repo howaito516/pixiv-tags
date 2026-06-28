@@ -106,7 +106,6 @@ def search_tag(tag_id):
 
     tag_name = row[0]
     tag_encoded = tag_name.replace(" ", "%20")
-
     ua = request.headers.get("User-Agent", "").lower()
 
     # --- Android → Pixiv公式アプリを確実に開く intent:// 方式 ---
