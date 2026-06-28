@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import os
 import csv
 import io
+import urllib.parse
 
 app = Flask(__name__)
 
@@ -169,20 +170,20 @@ def dedupe():
     export_to_csv()
     return redirect("/")
 
-# --- 検索 ---
+# --- Pixiv公式アプリでタグ検索を開く ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
-    start = normalize_date(tag["last_search"])
+    # タグ名をURLエンコード（日本語対応）
+    tag_encoded = urllib.parse.quote(tag["name"])
+
+    # Pixiv公式アプリ Deep Link
+    url = f"pixiv://search?tag={tag_encoded}"
+
+    # 最終検索日更新
     today = today_jst()
-
-    url = (
-        f"https://www.pixiv.net/search?"
-        f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
-    )
-
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
     export_to_csv()
