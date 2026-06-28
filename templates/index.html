@@ -24,13 +24,11 @@
 
     <hr>
 
-    <!-- ここが重要：action="/import" -->
     <form action="/import" method="post" enctype="multipart/form-data" style="display:inline;">
         <input type="file" name="file" required>
         <button type="submit">CSVインポート</button>
     </form>
 
-    <!-- ここが重要：href="/download" -->
     <a href="/download" style="margin-left:15px;">CSVダウンロード</a>
 
     <br><br>
@@ -47,28 +45,37 @@
 
     <hr>
 
-    {% for tag in tags %}
-    <div class="tag-card">
-        <div class="tag-title">{{ tag.name }}</div>
-        <div>最終検索: {{ tag.last_search }}</div>
+    <ul>
+        {% for tag in tags %}
+        <li>
+            <strong>{{ tag.name }}</strong>
 
-        {% if tag.memo %}
-            <div style="margin-top:8px;">メモ: {{ tag.memo }}</div>
-        {% endif %}
+            &nbsp;&nbsp;
 
-        <div class="tag-actions">
             <form action="/search/{{ tag.id }}" method="get" style="display:inline;">
                 <button type="submit">検索</button>
             </form>
 
+            &nbsp;&nbsp;
+
+            （最終検索: {{ tag.last_search }}）
+
+            &nbsp;&nbsp;
+
             <a href="/edit/{{ tag.id }}">編集</a>
 
+            &nbsp;&nbsp;
+
             <form action="/delete/{{ tag.id }}" method="post" style="display:inline;">
-                <button class="delete-btn" onclick="return confirm('削除しますか？');">削除</button>
+                <a href="#" onclick="if(confirm('削除しますか？')) this.closest('form').submit(); return false;">削除</a>
             </form>
-        </div>
-    </div>
-    {% endfor %}
+
+            {% if tag.memo %}
+                <br>メモ: {{ tag.memo }}
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
 
 </div>
 </body>

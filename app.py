@@ -169,7 +169,27 @@ def dedupe():
     export_to_csv()
     return redirect("/")
 
-# --- CSVインポート（404対策済み） ---
+# --- 検索 ---
+@app.route("/search/<int:tag_id>")
+def search(tag_id):
+    db = get_db()
+    tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
+
+    start = normalize_date(tag["last_search"])
+    today = today_jst()
+
+    url = (
+        f"https://www.pixiv.net/search?"
+        f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
+    )
+
+    db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
+    db.commit()
+    export_to_csv()
+
+    return redirect(url)
+
+# --- CSVインポート ---
 @app.route("/import", methods=["POST"])
 def import_csv():
     file = request.files["file"]
@@ -194,9 +214,11 @@ def import_csv():
     export_to_csv()
     return redirect("/")
 
-# --- CSVダウンロード（404対策済み） ---
+# --- CSVダウンロード ---
 @app.route("/download")
 def download():
+    if not os.path.exists(CSV_PATH):
+        export_to_csv()
     return send_file(
         CSV_PATH,
         mimetype="text/csv",
@@ -204,7 +226,7 @@ def download():
         download_name="tags.csv"
     )
 
-# --- Flask起動 ---
+# --- Flask起動（Render対応） ---
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
