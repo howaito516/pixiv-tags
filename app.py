@@ -109,11 +109,13 @@ def search_tag(tag_id):
 
     ua = request.headers.get("User-Agent", "").lower()
 
-    # Android → Pixiv公式アプリでタグ検索を開く
+    # --- Android → Pixiv公式アプリを確実に開く intent:// 方式 ---
     if "android" in ua:
-        return redirect(f"pixiv://tags/{tag_encoded}/artworks")
+        return redirect(
+            f"intent://tags/{tag_encoded}/artworks#Intent;scheme=pixiv;package=jp.pxv.android;end"
+        )
 
-    # PC → Web版Pixivのタグ検索ページへ
+    # --- PC → Web版Pixivのタグ検索ページへ ---
     return redirect(f"https://www.pixiv.net/tags/{tag_encoded}/artworks")
 
 # --- Render 用ポート設定 ---
