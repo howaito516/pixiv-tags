@@ -44,6 +44,11 @@
             <textarea id="memo_{{ tag[0] }}">{{ tag[3] }}</textarea>
         </td>
         <td>
+            <!-- 🔥 ここが重要：検索ボタンを追加 -->
+            <a href="/search/{{ tag[0] }}" target="_blank">
+                <button type="button">検索</button>
+            </a>
+
             <button onclick="updateTag({{ tag[0] }})">更新</button>
             <button onclick="deleteTag({{ tag[0] }})">削除</button>
         </td>
