@@ -91,7 +91,7 @@ def update_tag(tag_id):
     conn.close()
     return jsonify({"message": "タグを更新しました"})
 
-# --- タグ検索（PC / Android 両対応） ---
+# --- タグ検索（PC / Android 共通：Web版 Pixiv を開く） ---
 @app.route("/search/<int:tag_id>")
 def search_tag(tag_id):
     conn = get_connection()
@@ -106,15 +106,8 @@ def search_tag(tag_id):
 
     tag_name = row[0]
     tag_encoded = tag_name.replace(" ", "%20")
-    ua = request.headers.get("User-Agent", "").lower()
 
-    # --- Android → Pixiv公式アプリを確実に開く intent:// 方式 ---
-    if "android" in ua:
-        return redirect(
-            f"intent://tags/{tag_encoded}/artworks#Intent;scheme=pixiv;package=jp.pxv.android;end"
-        )
-
-    # --- PC → Web版Pixivのタグ検索ページへ ---
+    # PC も Android も Web版 Pixiv のタグ検索ページへ統一
     return redirect(f"https://www.pixiv.net/tags/{tag_encoded}/artworks")
 
 # --- Render 用ポート設定 ---
