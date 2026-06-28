@@ -24,11 +24,13 @@
 
     <hr>
 
+    <!-- ここが重要：action="/import" -->
     <form action="/import" method="post" enctype="multipart/form-data" style="display:inline;">
         <input type="file" name="file" required>
         <button type="submit">CSVインポート</button>
     </form>
 
+    <!-- ここが重要：href="/download" -->
     <a href="/download" style="margin-left:15px;">CSVダウンロード</a>
 
     <br><br>

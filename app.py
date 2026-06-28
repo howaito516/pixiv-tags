@@ -36,7 +36,6 @@ def normalize_date(raw):
 
     raw = raw.strip().replace("/", "-")
 
-    # YYYY-MM-DD
     try:
         return datetime.strptime(raw, "%Y-%m-%d").strftime("%Y-%m-%d")
     except ValueError:
@@ -44,21 +43,15 @@ def normalize_date(raw):
 
     parts = raw.split("-")
 
-    # YYYY-M-D
     if len(parts) == 3 and len(parts[0]) == 4:
-        y, m, d = parts[0], parts[1].zfill(2), parts[2].zfill(2)
-        return f"{y}-{m}-{d}"
+        return f"{parts[0]}-{parts[1].zfill(2)}-{parts[2].zfill(2)}"
 
-    # YY-M-D → 20xx
     if len(parts) == 3 and len(parts[0]) == 2:
-        y, m, d = "20" + parts[0], parts[1].zfill(2), parts[2].zfill(2)
-        return f"{y}-{m}-{d}"
+        return f"20{parts[0]}-{parts[1].zfill(2)}-{parts[2].zfill(2)}"
 
-    # M-D → 今年
     if len(parts) == 2:
         year = today_jst().split("-")[0]
-        m, d = parts[0].zfill(2), parts[1].zfill(2)
-        return f"{year}-{m}-{d}"
+        return f"{year}-{parts[0].zfill(2)}-{parts[1].zfill(2)}"
 
     return today_jst()
 
@@ -146,7 +139,7 @@ def delete(tag_id):
     export_to_csv()
     return redirect("/")
 
-# --- 重複削除（メモは文字数が多い方を優先） ---
+# --- 重複削除（メモ長優先） ---
 @app.route("/dedupe", methods=["POST"])
 def dedupe():
     db = get_db()
@@ -176,25 +169,40 @@ def dedupe():
     export_to_csv()
     return redirect("/")
 
-# --- 検索 ---
-@app.route("/search/<int:tag_id>")
-def search(tag_id):
+# --- CSVインポート（404対策済み） ---
+@app.route("/import", methods=["POST"])
+def import_csv():
+    file = request.files["file"]
+    if not file:
+        return redirect("/")
+
+    stream = io.StringIO(file.stream.read().decode("utf-8-sig"))
+    reader = csv.reader(stream)
+    next(reader, None)
+
     db = get_db()
-    tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
-
-    start = normalize_date(tag["last_search"])
-    today = today_jst()
-
-    url = (
-        f"https://www.pixiv.net/search?"
-        f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
-    )
-
-    db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
+    for row in reader:
+        if len(row) >= 2:
+            name = row[0]
+            last_search = normalize_date(row[1])
+            memo = row[2] if len(row) >= 3 else ""
+            db.execute(
+                "INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)",
+                (name, last_search, memo)
+            )
     db.commit()
     export_to_csv()
+    return redirect("/")
 
-    return redirect(url)
+# --- CSVダウンロード（404対策済み） ---
+@app.route("/download")
+def download():
+    return send_file(
+        CSV_PATH,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="tags.csv"
+    )
 
 # --- Flask起動 ---
 if __name__ == "__main__":
