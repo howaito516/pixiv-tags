@@ -3,7 +3,7 @@ https://dashboard.render.com/web/srv-d8vtv2v7f7vs739iuhmg/deploys/dep-d8vtv3f7f7
 
 
 https://github.com/howaito516/pixiv-tags
-
+G:\ホワイト\ピクチャ\github\pixiv-tags
 git add .
 git commit -m "update"
 git push
@@ -12,3 +12,8 @@ git push
 https://www.pixiv.net/tags/%E3%82%A4%E3%82%AD%E5%9C%B0%E7%8D%84/artworks?scd=2026-6-27&ecd=2026-06-27
 https://www.pixiv.net/search?q=%E5%AE%89%E7%AB%8B%E3%83%9F%E3%83%9F&s_mode=tag&type=artwork&scd=2026-06-09&ecd=2026-06-25
 https://www.pixiv.net/search?q=%E3%82%A4%E3%82%AD%E5%9C%B0%E7%8D%84&s_mode=tag&type=artwork&scd=2026-6-27&ecd=2026-06-27
+
+
+
+Supabase
+jVRQj5WCYxW8RsII

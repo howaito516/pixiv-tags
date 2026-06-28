@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: pixiv-tags
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    plan: free
+    envVars:
+      - key: SUPABASE_HOST
+        sync: false
+      - key: SUPABASE_DB
+        sync: false
+      - key: SUPABASE_USER
+        sync: false
+      - key: SUPABASE_PASSWORD
+        sync: false
