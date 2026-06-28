@@ -5,16 +5,19 @@
     <title>Pixiv タグ管理</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
+<div class="container">
+
     <h1>Pixiv タグ管理</h1>
 
     <h2>タグ追加</h2>
     <form action="/add" method="post">
-        <label>タグ名</label><br>
-        <input name="name" required><br><br>
+        <label>タグ名</label>
+        <input name="name" required>
 
-        <label>メモ</label><br>
-        <textarea name="memo" rows="3" cols="40"></textarea><br><br>
+        <label>メモ</label>
+        <textarea name="memo" rows="3"></textarea>
 
         <button type="submit">追加</button>
     </form>
@@ -26,8 +29,8 @@
         <button type="submit">CSVインポート</button>
     </form>
 
-    <br>
-    <a href="/download">CSVダウンロード</a>
+    <a href="/download" style="margin-left:15px;">CSVダウンロード</a>
+
     <br><br>
 
     {% if sort == "asc" %}
@@ -36,31 +39,35 @@
         <a href="/?sort=asc">日付の古い順に並べる</a>
     {% endif %}
 
-    <ul>
-        {% for tag in tags %}
-        <li>
+    <form action="/dedupe" method="post" style="display:inline; margin-left:15px;">
+        <button type="submit">重複タグを削除</button>
+    </form>
+
+    <hr>
+
+    {% for tag in tags %}
+    <div class="tag-card">
+        <div class="tag-title">{{ tag.name }}</div>
+        <div>最終検索: {{ tag.last_search }}</div>
+
+        {% if tag.memo %}
+            <div style="margin-top:8px;">メモ: {{ tag.memo }}</div>
+        {% endif %}
+
+        <div class="tag-actions">
             <form action="/search/{{ tag.id }}" method="get" style="display:inline;">
                 <button type="submit">検索</button>
             </form>
 
-            &nbsp;&nbsp;
-            <strong>{{ tag.name }}</strong>
-            &nbsp;&nbsp;
-            （最終検索: {{ tag.last_search }}）
-            &nbsp;&nbsp;
-
             <a href="/edit/{{ tag.id }}">編集</a>
 
-            &nbsp;&nbsp;
             <form action="/delete/{{ tag.id }}" method="post" style="display:inline;">
-                <a href="#" onclick="if(confirm('削除しますか？')) this.closest('form').submit(); return false;">削除</a>
+                <button class="delete-btn" onclick="return confirm('削除しますか？');">削除</button>
             </form>
+        </div>
+    </div>
+    {% endfor %}
 
-            {% if tag.memo %}
-                <br>メモ: {{ tag.memo }}
-            {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
+</div>
 </body>
 </html>
