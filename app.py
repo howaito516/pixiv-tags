@@ -1,17 +1,17 @@
 import os
 import psycopg2
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect
 from datetime import datetime
 
 app = Flask(__name__)
 
-# --- Supabase 接続設定 ---
+# --- Render 内部 PostgreSQL 接続設定 ---
 DB_CONFIG = {
     "host": os.environ.get("SUPABASE_HOST"),
     "database": os.environ.get("SUPABASE_DB"),
     "user": os.environ.get("SUPABASE_USER"),
     "password": os.environ.get("SUPABASE_PASSWORD"),
-    "port": 5432
+    "port": int(os.environ.get("SUPABASE_PORT", 5432))
 }
 
 def get_connection():
@@ -35,7 +35,7 @@ def init_db():
 
 init_db()
 
-# --- ルーティング ---
+# --- トップページ ---
 @app.route("/")
 def index():
     conn = get_connection()
@@ -46,6 +46,7 @@ def index():
     conn.close()
     return render_template("index.html", tags=tags)
 
+# --- タグ追加 ---
 @app.route("/add", methods=["POST"])
 def add_tag():
     name = request.form.get("name")
@@ -64,6 +65,7 @@ def add_tag():
     conn.close()
     return jsonify({"message": "タグを追加しました"})
 
+# --- タグ削除 ---
 @app.route("/delete/<int:tag_id>", methods=["POST"])
 def delete_tag(tag_id):
     conn = get_connection()
@@ -74,6 +76,7 @@ def delete_tag(tag_id):
     conn.close()
     return jsonify({"message": "タグを削除しました"})
 
+# --- タグ更新 ---
 @app.route("/update/<int:tag_id>", methods=["POST"])
 def update_tag(tag_id):
     memo = request.form.get("memo")
@@ -88,5 +91,31 @@ def update_tag(tag_id):
     conn.close()
     return jsonify({"message": "タグを更新しました"})
 
+# --- タグ検索（PC / Android 両対応） ---
+@app.route("/search/<int:tag_id>")
+def search_tag(tag_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM tags WHERE id = %s;", (tag_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not row:
+        return "Tag not found", 404
+
+    tag_name = row[0]
+    tag_encoded = tag_name.replace(" ", "%20")
+
+    ua = request.headers.get("User-Agent", "").lower()
+
+    # Android → Pixiv公式アプリでタグ検索を開く
+    if "android" in ua:
+        return redirect(f"pixiv://tags/{tag_encoded}/artworks")
+
+    # PC → Web版Pixivのタグ検索ページへ
+    return redirect(f"https://www.pixiv.net/tags/{tag_encoded}/artworks")
+
+# --- Render 用ポート設定 ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
