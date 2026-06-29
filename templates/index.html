@@ -18,6 +18,7 @@
 
 <h2>Pixiv タグ管理ツール</h2>
 
+<!-- タグ追加フォーム -->
 <form id="addForm">
     <label>タグ名：</label>
     <input type="text" name="name" required>
@@ -26,6 +27,13 @@
     <textarea name="memo"></textarea>
 
     <button type="submit">追加</button>
+</form>
+
+<!-- CSVインポートフォーム -->
+<form id="importForm" enctype="multipart/form-data" method="POST" action="/import" style="margin-top: 20px;">
+    <label>CSVファイル：</label>
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit">インポート</button>
 </form>
 
 <table>
@@ -46,9 +54,7 @@
             <textarea id="memo_{{ tag[0] }}">{{ tag[3] }}</textarea>
         </td>
         <td>
-            <!-- 🔥 buttonを削除し、aタグ単体で検索リンク -->
             <a href="/search/{{ tag[0] }}" class="search-link" target="_blank">検索</a>
-
             <button onclick="updateTag({{ tag[0] }})">更新</button>
             <button onclick="deleteTag({{ tag[0] }})">削除</button>
         </td>

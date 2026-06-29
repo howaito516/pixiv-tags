@@ -107,8 +107,36 @@ def search_tag(tag_id):
     tag_name = row[0]
     tag_encoded = tag_name.replace(" ", "%20")
 
-    # 🔥 Android Deep Link を廃止し、ブラウザで開くよう統一
     return redirect(f"https://www.pixiv.net/tags/{tag_encoded}/artworks")
+
+# --- CSVインポート ---
+@app.route("/import", methods=["POST"])
+def import_csv():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "CSVファイルがありません"}), 400
+
+    import csv
+    import io
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    reader = csv.reader(io.StringIO(file.stream.read().decode("utf-8")))
+    for row in reader:
+        if len(row) >= 1:
+            name = row[0]
+            memo = row[1] if len(row) >= 2 else ""
+            cur.execute(
+                "INSERT INTO tags (name, last_search, memo) VALUES (%s, %s, %s);",
+                (name, datetime.now().date(), memo)
+            )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return redirect("/")
 
 # --- Render 用ポート設定 ---
 if __name__ == "__main__":
