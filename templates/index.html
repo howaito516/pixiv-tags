@@ -2,48 +2,37 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Pixiv タグ管理ツール</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        h2 { margin-bottom: 10px; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            table-layout: auto; /* 自動調整 */
-        }
-
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: left;
-            white-space: nowrap;
-        }
-
-        th { background: #eee; }
-
-        input, textarea { width: 100%; padding: 6px; box-sizing: border-box; }
-        button { padding: 6px 12px; margin-right: 5px; }
-
-        a.search-link {
-            padding: 6px 12px;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-        }
-        a.search-link:hover { background: #0056b3; }
-
-        .toolbar { margin-top: 10px; }
-    </style>
+    <title>Pixiv タグ管理ツール（テスト版）</title>
 </head>
 <body>
 
-<h2>Pixiv タグ管理ツール</h2>
+<h2>Pixiv タグ管理ツール（テスト版）</h2>
 
 <form method="POST" action="/add">
     <label>タグ名：</label>
     <input type="text" name="name" required>
 
     <label>メモ：</label>
+    <textarea name="memo"></textarea>
+
+    <button type="submit">追加</button>
+</form>
+
+<table>
+    <tr>
+        <th>タグ名</th>
+        <th>検索</th>
+        <th>最終検索日</th>
+    </tr>
+
+    {% for tag in tags %}
+    <tr>
+        <td>{{ tag[1] }}</td>
+        <td><a href="/search/{{ tag[0] }}" target="_blank">検索</a></td>
+        <td>{{ tag[3] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+</html>
