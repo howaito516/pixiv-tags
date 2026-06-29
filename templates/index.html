@@ -6,13 +6,29 @@
     <style>
         body { font-family: sans-serif; margin: 20px; }
         h2 { margin-bottom: 10px; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
         th { background: #eee; }
+
+        .col-name { width: 30%; }
+        .col-search { width: 15%; }
+        .col-date { width: 20%; }
+        .col-edit { width: 15%; }
+        .col-delete { width: 20%; }
+
         input, textarea { width: 100%; padding: 6px; box-sizing: border-box; }
         button { padding: 6px 12px; margin-right: 5px; }
-        a.search-link { padding: 6px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+        a.search-link {
+            padding: 6px 12px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
         a.search-link:hover { background: #0056b3; }
+
+        .toolbar { margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -30,28 +46,41 @@
 </form>
 
 <form enctype="multipart/form-data" method="POST" action="/import" style="margin-top: 10px;">
-    <label>CSVファイル：</label>
+    <label>CSVファイル（タグ名, 最終更新日, メモ）：</label>
     <input type="file" name="file" accept=".csv" required>
     <button type="submit">CSVインポート</button>
     <a href="/export" style="margin-left:10px;">CSVエクスポート</a>
 </form>
 
+<div class="toolbar">
+    <form action="/sort_by_date" method="get" style="display:inline;">
+        <button type="submit">最終更新日順でソート</button>
+    </form>
+    <form action="/delete_all" method="post" style="display:inline; margin-left:10px;">
+        <button type="submit" onclick="return confirm('本当に全て削除しますか？');">全削除</button>
+    </form>
+</div>
+
 <table>
     <tr>
-        <th>タグ名</th>
-        <th>検索</th>
-        <th>最終検索日</th>
-        <th>編集</th>
-        <th>削除</th>
+        <th class="col-name">タグ名</th>
+        <th class="col-search">検索</th>
+        <th class="col-date">最終更新日</th>
+        <th class="col-edit">編集</th>
+        <th class="col-delete">削除</th>
     </tr>
 
     {% for tag in tags %}
     <tr>
-        <td>{{ tag[1] }}</td>
-        <td><a href="/search/{{ tag[0] }}" class="search-link" target="_blank">検索</a></td>
-        <td>{{ tag[3] }}</td>
-        <td><a href="/edit/{{ tag[0] }}">編集</a></td>
-        <td>
+        <td class="col-name">{{ tag[1] }}</td>
+        <td class="col-search">
+            <a href="/search/{{ tag[0] }}" class="search-link" target="_blank">検索</a>
+        </td>
+        <td class="col-date">{{ tag[3] }}</td>
+        <td class="col-edit">
+            <a href="/edit/{{ tag[0] }}">編集</a>
+        </td>
+        <td class="col-delete">
             <form action="/delete/{{ tag[0] }}" method="post" style="display:inline;">
                 <a href="#" onclick="if(confirm('削除しますか？')) this.closest('form').submit(); return false;">削除</a>
             </form>

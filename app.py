@@ -84,6 +84,17 @@ def delete_tag(tag_id):
     conn.close()
     return redirect("/")
 
+# --- 全削除 ---
+@app.route("/delete_all", methods=["POST"])
+def delete_all():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM tags;")
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect("/")
+
 # --- タグ編集（メモ更新） ---
 @app.route("/update/<int:tag_id>", methods=["POST"])
 def update_tag(tag_id):
@@ -99,7 +110,18 @@ def update_tag(tag_id):
     conn.close()
     return redirect("/")
 
-# --- タグ検索（期間指定対応 / Androidもブラウザで開く） ---
+# --- 最終検索日順ソート ---
+@app.route("/sort_by_date")
+def sort_by_date():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, memo, last_search FROM tags ORDER BY last_search DESC NULLS LAST;")
+    tags = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template("index.html", tags=tags)
+
+# --- タグ検索（期間指定対応 / 全環境ブラウザ） ---
 @app.route("/search/<int:tag_id>")
 def search_tag(tag_id):
     conn = get_connection()
@@ -114,6 +136,10 @@ def search_tag(tag_id):
 
     tag_name, last_search = row
     today = today_jst()
+
+    # last_search が NULL の場合は今日を開始日にする
+    if last_search is None:
+        last_search = today
 
     # 最終検索日を今日に更新
     conn = get_connection()
@@ -137,7 +163,7 @@ def search_tag(tag_id):
 
     return redirect(search_url)
 
-# --- CSVインポート ---
+# --- CSVインポート（タグ名 / 最終更新日 / メモ） ---
 @app.route("/import", methods=["POST"])
 def import_csv():
     file = request.files.get("file")
@@ -152,10 +178,19 @@ def import_csv():
     for row in reader:
         if len(row) >= 1:
             name = row[0]
-            memo = row[1] if len(row) >= 2 else ""
+            # 最終更新日（YYYY-MM-DD）なければ今日
+            if len(row) >= 2 and row[1]:
+                try:
+                    last_search = datetime.strptime(row[1], "%Y-%m-%d").date()
+                except ValueError:
+                    last_search = today_jst()
+            else:
+                last_search = today_jst()
+            memo = row[2] if len(row) >= 3 else ""
+
             cur.execute(
                 "INSERT INTO tags (name, memo, last_search) VALUES (%s, %s, %s);",
-                (name, memo, today_jst()),
+                (name, memo, last_search),
             )
 
     conn.commit()
@@ -164,19 +199,19 @@ def import_csv():
 
     return redirect("/")
 
-# --- CSVエクスポート ---
+# --- CSVエクスポート（タグ名 / 最終更新日 / メモ） ---
 @app.route("/export")
 def export_csv():
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT name, memo, last_search FROM tags ORDER BY id DESC;")
+    cur.execute("SELECT name, last_search, memo FROM tags ORDER BY id DESC;")
     rows = cur.fetchall()
     cur.close()
     conn.close()
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["タグ名", "メモ", "最終検索日"])
+    writer.writerow(["タグ名", "最終更新日", "メモ"])
     writer.writerows(rows)
     output.seek(0)
 
@@ -202,6 +237,6 @@ def edit_page(tag_id):
 
     return render_template("edit.html", tag=row)
 
-# --- Render / Raspberry Pi 用 ---
+# --- エントリポイント ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
