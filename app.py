@@ -1,7 +1,9 @@
 import os
 import psycopg2
-from flask import Flask, request, jsonify, render_template, redirect
+from flask import Flask, request, jsonify, render_template, redirect, send_file
 from datetime import datetime
+import csv
+import io
 
 app = Flask(__name__)
 
@@ -116,9 +118,6 @@ def import_csv():
     if not file:
         return jsonify({"error": "CSVファイルがありません"}), 400
 
-    import csv
-    import io
-
     conn = get_connection()
     cur = conn.cursor()
 
@@ -137,6 +136,29 @@ def import_csv():
     conn.close()
 
     return redirect("/")
+
+# --- CSVエクスポート ---
+@app.route("/export")
+def export_csv():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT name, memo, last_search FROM tags ORDER BY id DESC;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["タグ名", "メモ", "最終検索日"])
+    writer.writerows(rows)
+    output.seek(0)
+
+    return send_file(
+        io.BytesIO(output.getvalue().encode("utf-8")),
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name=f"pixiv_tags_{datetime.now().strftime('%Y%m%d')}.csv"
+    )
 
 # --- Render 用ポート設定 ---
 if __name__ == "__main__":

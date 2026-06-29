@@ -5,58 +5,59 @@
     <title>Pixiv タグ管理ツール</title>
     <style>
         body { font-family: sans-serif; margin: 20px; }
+        h2 { margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
         th { background: #eee; }
-        input, textarea { width: 100%; padding: 6px; }
-        button { padding: 6px 12px; }
+        input, textarea { width: 100%; padding: 6px; box-sizing: border-box; }
+        button { padding: 6px 12px; margin-right: 5px; }
         a.search-link { display: inline-block; padding: 6px 12px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
         a.search-link:hover { background: #0056b3; }
+        .form-section { margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
 <h2>Pixiv タグ管理ツール</h2>
 
-<!-- タグ追加フォーム -->
-<form id="addForm">
-    <label>タグ名：</label>
-    <input type="text" name="name" required>
+<div class="form-section">
+    <form id="addForm">
+        <label>タグ名：</label>
+        <input type="text" name="name" required>
 
-    <label>メモ：</label>
-    <textarea name="memo"></textarea>
+        <label>メモ：</label>
+        <textarea name="memo"></textarea>
 
-    <button type="submit">追加</button>
-</form>
+        <button type="submit">追加</button>
+    </form>
 
-<!-- CSVインポートフォーム -->
-<form id="importForm" enctype="multipart/form-data" method="POST" action="/import" style="margin-top: 20px;">
-    <label>CSVファイル：</label>
-    <input type="file" name="file" accept=".csv" required>
-    <button type="submit">インポート</button>
-</form>
+    <form id="importForm" enctype="multipart/form-data" method="POST" action="/import" style="margin-top: 10px;">
+        <label>CSVファイル：</label>
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit">CSVインポート</button>
+        <a href="/export" style="margin-left:10px;">CSVエクスポート</a>
+    </form>
+</div>
 
 <table>
     <tr>
-        <th>ID</th>
         <th>タグ名</th>
-        <th>最終検索日</th>
-        <th>メモ</th>
-        <th>操作</th>
+        <th>検索</th>
+        <th>最終更新日</th>
+        <th>編集</th>
+        <th>削除</th>
     </tr>
 
     {% for tag in tags %}
     <tr>
-        <td>{{ tag[0] }}</td>
         <td>{{ tag[1] }}</td>
+        <td><a href="/search/{{ tag[0] }}" class="search-link" target="_blank">検索</a></td>
         <td>{{ tag[2] }}</td>
+        <td><a href="/edit/{{ tag[0] }}">編集</a></td>
         <td>
-            <textarea id="memo_{{ tag[0] }}">{{ tag[3] }}</textarea>
-        </td>
-        <td>
-            <a href="/search/{{ tag[0] }}" class="search-link" target="_blank">検索</a>
-            <button onclick="updateTag({{ tag[0] }})">更新</button>
-            <button onclick="deleteTag({{ tag[0] }})">削除</button>
+            <form action="/delete/{{ tag[0] }}" method="post" style="display:inline;">
+                <a href="#" onclick="if(confirm('削除しますか？')) this.closest('form').submit(); return false;">削除</a>
+            </form>
         </td>
     </tr>
     {% endfor %}
@@ -69,19 +70,6 @@ document.getElementById("addForm").onsubmit = async function(e) {
     await fetch("/add", { method: "POST", body: formData });
     location.reload();
 };
-
-async function deleteTag(id) {
-    await fetch(`/delete/${id}`, { method: "POST" });
-    location.reload();
-}
-
-async function updateTag(id) {
-    const memo = document.getElementById(`memo_${id}`).value;
-    const formData = new FormData();
-    formData.append("memo", memo);
-    await fetch(`/update/${id}`, { method: "POST", body: formData });
-    location.reload();
-}
 </script>
 
 </body>
