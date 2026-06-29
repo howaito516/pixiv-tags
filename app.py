@@ -10,12 +10,10 @@ app = Flask(__name__)
 # --- 日本標準時（JST） ---
 JST = timezone(timedelta(hours=9))
 
-
 def today_jst():
     return datetime.now(JST).date()
 
-
-# --- PostgreSQL 接続設定（Render / Raspberry Pi 両対応） ---
+# --- PostgreSQL 接続設定 ---
 DB_CONFIG = {
     "host": os.environ.get("SUPABASE_HOST", "localhost"),
     "database": os.environ.get("SUPABASE_DB", "pixiv_tags_db"),
@@ -24,32 +22,26 @@ DB_CONFIG = {
     "port": int(os.environ.get("SUPABASE_PORT", 5432)),
 }
 
-
 def get_connection():
     return psycopg2.connect(**DB_CONFIG)
-
 
 # --- DB初期化 ---
 def init_db():
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute(
-        """
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS tags (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             memo TEXT,
             last_search DATE
         );
-        """
-    )
+    """)
     conn.commit()
     cur.close()
     conn.close()
 
-
 init_db()
-
 
 # --- トップページ ---
 @app.route("/")
@@ -61,7 +53,6 @@ def index():
     cur.close()
     conn.close()
     return render_template("index.html", tags=tags)
-
 
 # --- タグ追加 ---
 @app.route("/add", methods=["POST"])
@@ -82,7 +73,6 @@ def add_tag():
     conn.close()
     return redirect("/")
 
-
 # --- タグ削除 ---
 @app.route("/delete/<int:tag_id>", methods=["POST"])
 def delete_tag(tag_id):
@@ -93,7 +83,6 @@ def delete_tag(tag_id):
     cur.close()
     conn.close()
     return redirect("/")
-
 
 # --- タグ編集（メモ更新） ---
 @app.route("/update/<int:tag_id>", methods=["POST"])
@@ -110,8 +99,7 @@ def update_tag(tag_id):
     conn.close()
     return redirect("/")
 
-
-# --- タグ検索（PCブラウザ / Androidブラウザ判定付き） ---
+# --- タグ検索（期間指定対応 / Androidもブラウザで開く） ---
 @app.route("/search/<int:tag_id>")
 def search_tag(tag_id):
     conn = get_connection()
@@ -125,30 +113,29 @@ def search_tag(tag_id):
         return "Tag not found", 404
 
     tag_name, last_search = row
+    today = today_jst()
+
     # 最終検索日を今日に更新
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
         "UPDATE tags SET last_search = %s WHERE id = %s;",
-        (today_jst(), tag_id),
+        (today, tag_id),
     )
     conn.commit()
     cur.close()
     conn.close()
 
-    # タグ名をURL用にエンコード（簡易版）
+    # URLエンコード（簡易）
     encoded = tag_name.replace(" ", "%20")
 
-    ua = request.headers.get("User-Agent", "").lower()
-    is_android = "android" in ua
+    # 期間指定検索URL（Web版Pixiv）
+    search_url = (
+        f"https://www.pixiv.net/tags/{encoded}/artworks"
+        f"?scd={last_search}&ecd={today}"
+    )
 
-    if is_android:
-        # Androidブラウザ → pixiv公式アプリへ
-        return redirect(f"pixiv://tags/{encoded}/artworks")
-    else:
-        # PCブラウザ → Web版pixivへ
-        return redirect(f"https://www.pixiv.net/tags/{encoded}/artworks")
-
+    return redirect(search_url)
 
 # --- CSVインポート ---
 @app.route("/import", methods=["POST"])
@@ -177,7 +164,6 @@ def import_csv():
 
     return redirect("/")
 
-
 # --- CSVエクスポート ---
 @app.route("/export")
 def export_csv():
@@ -201,8 +187,7 @@ def export_csv():
         download_name=f"pixiv_tags_{datetime.now(JST).strftime('%Y%m%d')}.csv",
     )
 
-
-# --- エディットページ（メモ編集用） ---
+# --- 編集ページ ---
 @app.route("/edit/<int:tag_id>")
 def edit_page(tag_id):
     conn = get_connection()
@@ -217,7 +202,6 @@ def edit_page(tag_id):
 
     return render_template("edit.html", tag=row)
 
-
-# --- エントリポイント ---
+# --- Render / Raspberry Pi 用 ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
