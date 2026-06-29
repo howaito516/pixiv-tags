@@ -137,7 +137,6 @@ def search_tag(tag_id):
     tag_name, last_search = row
     today = today_jst()
 
-    # last_search が NULL の場合は今日を開始日にする
     if last_search is None:
         last_search = today
 
@@ -152,15 +151,8 @@ def search_tag(tag_id):
     cur.close()
     conn.close()
 
-    # URLエンコード（簡易）
     encoded = tag_name.replace(" ", "%20")
-
-    # 期間指定検索URL（Web版Pixiv）
-    search_url = (
-        f"https://www.pixiv.net/tags/{encoded}/artworks"
-        f"?scd={last_search}&ecd={today}"
-    )
-
+    search_url = f"https://www.pixiv.net/tags/{encoded}/artworks?scd={last_search}&ecd={today}"
     return redirect(search_url)
 
 # --- CSVインポート（タグ名 / 最終更新日 / メモ） ---
@@ -177,16 +169,17 @@ def import_csv():
 
     for row in reader:
         if len(row) >= 1:
-            name = row[0]
-            # 最終更新日（YYYY-MM-DD）なければ今日
-            if len(row) >= 2 and row[1]:
+            name = row[0].strip()
+            memo = row[2].strip() if len(row) >= 3 else ""
+
+            # 最終更新日（YYYY-MM-DD）を正しく読み取る
+            if len(row) >= 2 and row[1].strip() != "":
                 try:
-                    last_search = datetime.strptime(row[1], "%Y-%m-%d").date()
+                    last_search = datetime.strptime(row[1].strip(), "%Y-%m-%d").date()
                 except ValueError:
                     last_search = today_jst()
             else:
                 last_search = today_jst()
-            memo = row[2] if len(row) >= 3 else ""
 
             cur.execute(
                 "INSERT INTO tags (name, memo, last_search) VALUES (%s, %s, %s);",
