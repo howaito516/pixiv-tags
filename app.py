@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, send_file
 import sqlite3
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 import os
 import csv
 import io
@@ -132,9 +132,6 @@ def search(tag_id):
 
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
-
-    print(f"[INFO] JST TODAY = {today}")
-    print(f"[INFO] URL = {url}")
 
     return redirect(url)
 
