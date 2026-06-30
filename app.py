@@ -115,7 +115,7 @@ def delete(tag_id):
     db.commit()
     return redirect("/")
 
-# --- 検索（PC→Web / Android→Pixivアプリ） ---
+# --- 検索（PC・Android共通でブラウザ版Pixivへ） ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
@@ -125,39 +125,16 @@ def search(tag_id):
     today = today_jst()
     tag_name = tag["name"]
 
-    ua = request.headers.get("User-Agent", "")
+    # 常に Web 版 Pixiv のタグ検索へ飛ばす（PC・Android共通）
+    url = (
+        f"https://www.pixiv.net/search?"
+        f"q={tag_name}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
+    )
 
-    # PC → Web版Pixivへ
-    if "Android" not in ua:
-        url = (
-            f"https://www.pixiv.net/search?"
-            f"q={tag_name}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
-        )
-        db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
-        db.commit()
-        return redirect(url)
-
-    # Android → 中間ページでアプリ起動
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
 
-    return f"""
-    <html>
-    <body>
-        <script>
-            // Pixivアプリを起動
-            window.location.href = "pixiv://app/tags?tag={tag_name}";
-
-            // 1秒後にWeb版へフォールバック
-            setTimeout(function() {{
-                window.location.href = "https://www.pixiv.net/search?q={tag_name}&s_mode=tag&type=artwork&scd={start}&ecd={today}";
-            }}, 1000);
-        </script>
-
-        <p>Pixivアプリを起動しています…</p>
-    </body>
-    </html>
-    """
+    return redirect(url)
 
 # --- CSV ダウンロード ---
 @app.route("/download")
