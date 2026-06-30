@@ -71,7 +71,7 @@ def index():
     db = get_db()
 
     if sort == "asc":
-        tags = db.execute("SELECT * FROM tags ORDER BY last_search ASC").fetchall()
+        tags = db.execute("SELECT * FROM tags ORDER ORDER BY last_search ASC").fetchall()
     else:
         tags = db.execute("SELECT * FROM tags ORDER BY last_search DESC").fetchall()
 
@@ -115,20 +115,27 @@ def delete(tag_id):
     db.commit()
     return redirect("/")
 
-# --- 検索 ---
+# --- 検索（PC→Web / Android→Pixivアプリ） ---
 @app.route("/search/<int:tag_id>")
 def search(tag_id):
     db = get_db()
-
     tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
 
     start = normalize_date(tag["last_search"])
     today = today_jst()
 
-    url = (
-        f"https://www.pixiv.net/search?"
-        f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
-    )
+    ua = request.headers.get("User-Agent", "")
+    tag_name = tag["name"]
+
+    # --- AndroidならPixiv公式アプリを起動 ---
+    if "Android" in ua:
+        url = f"pixiv://app/tags?tag={tag_name}"
+    else:
+        # PCならPixiv Web検索
+        url = (
+            f"https://www.pixiv.net/search?"
+            f"q={tag_name}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
+        )
 
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
@@ -157,7 +164,7 @@ def download():
         download_name="pixiv_tags.csv"
     )
 
-# --- CSV インポート ---
+# --- CSV インポート（選んだら即インポート） ---
 @app.route("/import", methods=["POST"])
 def import_csv():
     file = request.files["file"]
