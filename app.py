@@ -1,195 +1,200 @@
-from flask import Flask, request, render_template, redirect, send_file
-import psycopg2
-from datetime import datetime, timezone, timedelta
+from flask import Flask, render_template, request, redirect, send_file
+import sqlite3
+from datetime import date, datetime, timedelta, timezone
 import os
 import csv
 import io
 
 app = Flask(__name__)
 
-# -----------------------------
-#  日本標準時（JST）
-# -----------------------------
+# --- JST設定 ---
 JST = timezone(timedelta(hours=9))
 
 def today_jst():
-    return datetime.now(JST).date()
+    return datetime.now(JST).date().isoformat()
 
+# --- DB 接続 ---
+def get_db():
+    conn = sqlite3.connect("tags.db", check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# -----------------------------
-#  DB接続設定
-# -----------------------------
-DB_CONFIG = {
-    "host": os.environ.get("SUPABASE_HOST", "localhost"),
-    "database": os.environ.get("SUPABASE_DB", "pixiv_tags_db"),
-    "user": os.environ.get("SUPABASE_USER", "pixiv_tags_db_user"),
-    "password": os.environ.get("SUPABASE_PASSWORD", ""),
-    "port": int(os.environ.get("SUPABASE_PORT", 5432)),
-}
-
-def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
-
-
-# -----------------------------
-#  DB初期化（tagsテーブル）
-# -----------------------------
-def init_db():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
+# --- 初回起動時にテーブル作成 ---
+with get_db() as db:
+    db.execute("""
         CREATE TABLE IF NOT EXISTS tags (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            memo TEXT,
-            last_search DATE
-        );
+            last_search DATE NOT NULL,
+            memo TEXT
+        )
     """)
-    conn.commit()
-    cur.close()
-    conn.close()
 
-init_db()
+# --- CSV日付強化版 normalize_date ---
+def normalize_date(raw):
+    if not raw:
+        return today_jst()
 
+    raw = raw.strip().replace("/", "-")
 
-# -----------------------------
-#  トップページ
-# -----------------------------
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except ValueError:
+        pass
+
+    parts = raw.split("-")
+
+    if len(parts) == 3 and len(parts[0]) == 4:
+        y = parts[0]
+        m = parts[1].zfill(2)
+        d = parts[2].zfill(2)
+        return f"{y}-{m}-{d}"
+
+    if len(parts) == 3 and len(parts[0]) == 2:
+        y = "20" + parts[0]
+        m = parts[1].zfill(2)
+        d = parts[2].zfill(2)
+        return f"{y}-{m}-{d}"
+
+    if len(parts) == 2:
+        year = today_jst().split("-")[0]
+        m = parts[0].zfill(2)
+        d = parts[1].zfill(2)
+        return f"{year}-{m}-{d}"
+
+    return today_jst()
+
+# --- トップページ ---
 @app.route("/")
 def index():
-    # TODO: タグ一覧取得
-    return render_template("index.html", tags=[])
+    sort = request.args.get("sort", "desc")
+    db = get_db()
 
+    if sort == "asc":
+        tags = db.execute("SELECT * FROM tags ORDER BY last_search ASC").fetchall()
+    else:
+        tags = db.execute("SELECT * FROM tags ORDER BY last_search DESC").fetchall()
 
-# -----------------------------
-#  タグ追加
-# -----------------------------
+    return render_template("index.html", tags=tags, sort=sort)
+
+# --- タグ追加 ---
 @app.route("/add", methods=["POST"])
-def add_tag():
-    name = request.form.get("name", "").strip()
-    memo = request.form.get("memo", "").strip()
-
-    if not name:
-        return "タグ名が空です", 400
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        "INSERT INTO tags (name, memo, last_search) VALUES (%s, %s, %s);",
-        (name, memo, today_jst()),
-    )
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return redirect("/")
-
-
-# -----------------------------
-#  タグ削除
-# -----------------------------
-@app.route("/delete/<int:tag_id>", methods=["POST"])
-def delete_tag(tag_id):
-    # TODO: タグ削除処理
-    return redirect("/")
-
-
-# -----------------------------
-#  全削除
-# -----------------------------
-@app.route("/delete_all", methods=["POST"])
-def delete_all():
-    # TODO: 全削除処理
-    return redirect("/")
-
-
-# -----------------------------
-#  タグ編集ページ
-# -----------------------------
-@app.route("/edit/<int:tag_id>")
-def edit_page(tag_id):
-    # TODO: 編集ページ表示
-    return render_template("edit.html", tag=None)
-
-
-# -----------------------------
-#  タグ更新（メモ編集）
-# -----------------------------
-@app.route("/update/<int:tag_id>", methods=["POST"])
-def update_tag(tag_id):
-    # TODO: メモ更新処理
-    return redirect("/")
-
-
-# -----------------------------
-#  最終更新日順ソート
-# -----------------------------
-@app.route("/sort_by_date")
-def sort_by_date():
-    # TODO: ソート処理
-    return render_template("index.html", tags=[])
-
-
-# -----------------------------
-#  タグ検索（Pixivへ飛ぶ）
-# -----------------------------
-@app.route("/search/<int:tag_id>")
-def search_tag(tag_id):
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT name, last_search FROM tags WHERE id = %s;", (tag_id,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if not row:
-        return "Tag not found", 404
-
-    tag_name, last_search = row
+def add():
+    name = request.form["name"]
+    memo = request.form["memo"]
     today = today_jst()
 
-    if last_search is None:
-        last_search = today
-
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE tags SET last_search = %s WHERE id = %s;",
-        (today, tag_id),
+    db = get_db()
+    db.execute(
+        "INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)",
+        (name, today, memo)
     )
-    conn.commit()
-    cur.close()
-    conn.close()
+    db.commit()
+    return redirect("/")
 
-    encoded = tag_name.replace(" ", "%20")
-    url = f"https://www.pixiv.net/tags/{encoded}/artworks?scd={last_search}&ecd={today}"
+# --- タグ編集 ---
+@app.route("/edit/<int:tag_id>", methods=["GET", "POST"])
+def edit(tag_id):
+    db = get_db()
+
+    if request.method == "POST":
+        name = request.form["name"]
+        memo = request.form["memo"]
+        db.execute("UPDATE tags SET name = ?, memo = ? WHERE id = ?", (name, memo, tag_id))
+        db.commit()
+        return redirect("/")
+
+    tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
+    return render_template("edit.html", tag=tag)
+
+# --- タグ削除 ---
+@app.route("/delete/<int:tag_id>", methods=["POST"])
+def delete(tag_id):
+    db = get_db()
+    db.execute("DELETE FROM tags WHERE id = ?", (tag_id,))
+    db.commit()
+    return redirect("/")
+
+# --- 検索 ---
+@app.route("/search/<int:tag_id>")
+def search(tag_id):
+    db = get_db()
+
+    tag = db.execute("SELECT * FROM tags WHERE id = ?", (tag_id,)).fetchone()
+
+    start = normalize_date(tag["last_search"])
+    today = today_jst()
+
+    url = (
+        f"https://www.pixiv.net/search?"
+        f"q={tag['name']}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
+    )
+
+    db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
+    db.commit()
+
+    print(f"[INFO] JST TODAY = {today}")
+    print(f"[INFO] URL = {url}")
 
     return redirect(url)
 
+# --- CSV ダウンロード ---
+@app.route("/download")
+def download():
+    db = get_db()
+    tags = db.execute("SELECT name, last_search, memo FROM tags").fetchall()
 
-# -----------------------------
-#  CSVインポート
-# -----------------------------
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["タグ名", "最終検索日", "メモ"])
+
+    for tag in tags:
+        writer.writerow([tag["name"], tag["last_search"], tag["memo"]])
+
+    output.seek(0)
+
+    return send_file(
+        io.BytesIO(output.getvalue().encode("utf-8-sig")),
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="pixiv_tags.csv"
+    )
+
+# --- CSV インポート ---
 @app.route("/import", methods=["POST"])
 def import_csv():
-    # TODO: CSV読み込み → DB登録
+    file = request.files["file"]
+    if not file:
+        return redirect("/")
+
+    stream = io.StringIO(file.stream.read().decode("utf-8-sig"))
+    reader = csv.reader(stream)
+
+    next(reader, None)
+
+    db = get_db()
+    for row in reader:
+        if len(row) >= 2:
+            name = row[0]
+            last_search = normalize_date(row[1])
+            memo = row[2] if len(row) >= 3 else ""
+            db.execute(
+                "INSERT INTO tags (name, last_search, memo) VALUES (?, ?, ?)",
+                (name, last_search, memo)
+            )
+    db.commit()
+
     return redirect("/")
 
+# --- キャッシュ無効化 ---
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
-# -----------------------------
-#  CSVエクスポート
-# -----------------------------
-@app.route("/export")
-def export_csv():
-    # TODO: DB取得 → CSV生成 → send_file
-    return send_file(io.BytesIO(b""), mimetype="text/csv")
-
-
-# -----------------------------
-#  エントリポイント
-# -----------------------------
+# --- Flask 起動 ---
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

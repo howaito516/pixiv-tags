@@ -1,14 +1,27 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
     <meta charset="UTF-8">
     <title>タグ編集</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+<div class="container">
 
-<h2>タグ編集</h2>
+    <h1>タグ編集</h1>
 
-<p>まだ未実装です</p>
+    <form method="post">
+        <label>タグ名</label>
+        <input name="name" value="{{ tag.name }}" required>
 
+        <label>メモ</label>
+        <textarea name="memo" rows="4">{{ tag.memo }}</textarea>
+
+        <button type="submit">更新</button>
+    </form>
+
+    <a href="/">戻る</a>
+
+</div>
 </body>
 </html>

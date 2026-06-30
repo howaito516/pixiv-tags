@@ -1,38 +1,67 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Pixiv タグ管理ツール（テスト版）</title>
+    <title>Pixiv タグ管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+<div class="container">
 
-<h2>Pixiv タグ管理ツール（テスト版）</h2>
+    <h1>Pixiv タグ管理</h1>
 
-<form method="POST" action="/add">
-    <label>タグ名：</label>
-    <input type="text" name="name" required>
+    <h2>タグ追加</h2>
+    <form action="/add" method="post">
+        <label>タグ名</label>
+        <input name="name" required>
 
-    <label>メモ：</label>
-    <textarea name="memo"></textarea>
+        <label>メモ</label>
+        <textarea name="memo" rows="3"></textarea>
 
-    <button type="submit">追加</button>
-</form>
+        <button type="submit">追加</button>
+    </form>
 
-<table>
-    <tr>
-        <th>タグ名</th>
-        <th>検索</th>
-        <th>最終検索日</th>
-    </tr>
+    <hr>
 
-    {% for tag in tags %}
-    <tr>
-        <td>{{ tag[1] }}</td>
-        <td><a href="/search/{{ tag[0] }}" target="_blank">検索</a></td>
-        <td>{{ tag[3] }}</td>
-    </tr>
-    {% endfor %}
-</table>
+    <form action="/import" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">CSVインポート</button>
+    </form>
 
+    <br>
+    <a href="/download">CSVダウンロード</a>
+    <br><br>
+
+    {% if sort == "asc" %}
+        <a href="/?sort=desc">日付の新しい順に並べる</a>
+    {% else %}
+        <a href="/?sort=asc">日付の古い順に並べる</a>
+    {% endif %}
+
+    <ul>
+        {% for tag in tags %}
+        <li class="tag-item">
+
+            <form action="/search/{{ tag.id }}" method="get" class="inline-btn">
+                <button type="submit">検索</button>
+            </form>
+
+            <span class="tag-name">{{ tag.name }}</span>
+            <span class="tag-meta">（最終検索: {{ tag.last_search }}）</span>
+
+            <a class="inline-btn" href="/edit/{{ tag.id }}">編集</a>
+
+            <form action="/delete/{{ tag.id }}" method="post" class="inline-btn">
+                <a href="#" onclick="if(confirm('削除しますか？')) this.closest('form').submit(); return false;">削除</a>
+            </form>
+
+            {% if tag.memo %}
+                <div class="memo">メモ: {{ tag.memo }}</div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+
+</div>
 </body>
 </html>
