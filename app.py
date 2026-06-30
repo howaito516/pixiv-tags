@@ -71,7 +71,7 @@ def index():
     db = get_db()
 
     if sort == "asc":
-        tags = db.execute("SELECT * FROM tags ORDER ORDER BY last_search ASC").fetchall()
+        tags = db.execute("SELECT * FROM tags ORDER BY last_search ASC").fetchall()
     else:
         tags = db.execute("SELECT * FROM tags ORDER BY last_search DESC").fetchall()
 
@@ -123,24 +123,41 @@ def search(tag_id):
 
     start = normalize_date(tag["last_search"])
     today = today_jst()
-
-    ua = request.headers.get("User-Agent", "")
     tag_name = tag["name"]
 
-    # --- AndroidならPixiv公式アプリを起動 ---
-    if "Android" in ua:
-        url = f"pixiv://app/tags?tag={tag_name}"
-    else:
-        # PCならPixiv Web検索
+    ua = request.headers.get("User-Agent", "")
+
+    # PC → Web版Pixivへ
+    if "Android" not in ua:
         url = (
             f"https://www.pixiv.net/search?"
             f"q={tag_name}&s_mode=tag&type=artwork&scd={start}&ecd={today}"
         )
+        db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
+        db.commit()
+        return redirect(url)
 
+    # Android → 中間ページでアプリ起動
     db.execute("UPDATE tags SET last_search = ? WHERE id = ?", (today, tag_id))
     db.commit()
 
-    return redirect(url)
+    return f"""
+    <html>
+    <body>
+        <script>
+            // Pixivアプリを起動
+            window.location.href = "pixiv://app/tags?tag={tag_name}";
+
+            // 1秒後にWeb版へフォールバック
+            setTimeout(function() {{
+                window.location.href = "https://www.pixiv.net/search?q={tag_name}&s_mode=tag&type=artwork&scd={start}&ecd={today}";
+            }}, 1000);
+        </script>
+
+        <p>Pixivアプリを起動しています…</p>
+    </body>
+    </html>
+    """
 
 # --- CSV ダウンロード ---
 @app.route("/download")
